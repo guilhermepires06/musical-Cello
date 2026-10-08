@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editor de Partitura para Violoncelo</title>
+  <style>
+    :root {
+      --bg: #0A0B10;
+      --panel: #131520;
+      --panel-border: #222536;
+      --accent: #00E5FF;
+      --active-note: #FFD700;
+      --text: #FFFFFF;
+    }
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100vh;
+      overflow-x: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+    }
+
+    body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      color: var(--accent);
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 12px;
+      width: 100%;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* COLUNA DA ESQUERDA */
+    .left-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .fingerboard-container {
+      background: #040507;
+      border-radius: 8px;
+      padding: 10px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid var(--panel-border);
+      box-shadow: inset 0 0 12px rgba(0,0,0,0.9);
+    }
+
+    svg#bracoCelloVertical {
+      width: 180px;
+      height: 520px;
+      display: block;
+    }
+
+    .corda-cello {
+      transition: all 0.2s ease;
+    }
+
+    .corda-cello.solta-ativa {
+      stroke: #FFD700 !important;
+      filter: drop-shadow(0 0 6px #FFD700);
+    }
+
+    .finger-indicator {
+      fill: #FFD700;
+      stroke: #FFFFFF;
+      stroke-width: 2;
+      filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .display-nota {
+      background: #090A10;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 6px;
+      text-align: center;
+    }
+    .display-nota h2 { font-size: 1.1rem; margin: 1px 0; color: var(--active-note); }
+    .display-nota p { font-size: 0.75rem; color: #AAA; }
+
+    /* CONTROLES DE REPRODUÇÃO */
+    .playback-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .playback-controls-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* COLUNA DA DIREITA */
+    .right-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    /* BARRA DE ESCALA */
+    .scale-bar-container {
+      background: #090A10;
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .scale-title {
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .scale-notes-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: flex-start;
+    }
+
+    .scale-chip {
+      background: #1B1E2E;
+      border: 1px solid #2D324A;
+      border-radius: 4px;
+      padding: 3px 5px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 38px;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .scale-chip:hover {
+      background: #282C44;
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .scale-chip.active {
+      background: var(--accent);
+      color: #000;
+      border-color: #FFF;
+      font-weight: bold;
+    }
+
+    .scale-chip .chip-name { font-size: 0.75rem; font-weight: bold; }
+    .scale-chip .chip-sub { font-size: 0.6rem; opacity: 0.8; }
+
+    /* TOOLBAR */
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      background: #090A10;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .block-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #181A26;
+      padding: 3px 6px;
+      border-radius: 5px;
+      border: 1px solid var(--panel-border);
+    }
+
+    .block-group label {
+      font-size: 0.68rem;
+      font-weight: bold;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    select {
+      background: #25283B;
+      color: #FFF;
+      border: 1px solid var(--panel-border);
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-weight: bold;
+      outline: none;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 0.68rem;
+      color: #CCC;
+      user-select: none;
+      background: #25283B;
+      padding: 2px 4px;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 5px 8px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.72rem;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn:hover { filter: brightness(1.2); }
+    .btn-secondary { background: #25283B; color: #FFF; }
+    .btn-warning { background: #FF9800; color: #000; }
+    .btn-danger { background: #FF5252; color: #FFF; }
+
+    /* PAUTA MUSICAL */
+    .staff-container {
+      background: #FFF8EE;
+      border-radius: 8px;
+      padding: 8px;
+      position: relative;
+      user-select: none;
+      overflow-x: auto;
+      width: 100%;
+      scroll-behavior: smooth;
+      border: 2px solid #E2D8C3;
+      box-shadow: inset 0 0 8px rgba(0,0,0,0.05);
+      cursor: pointer;
+    }
+
+    .staff-container::-webkit-scrollbar { height: 6px; }
+    .staff-container::-webkit-scrollbar-track { background: #E2D8C3; border-radius: 3px; }
+    .staff-container::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+    svg#staffSVG {
+      height: 230px;
+      background: transparent;
+      display: block;
+    }
+
+    .staff-line { stroke: #2C2C2C; stroke-width: 1.8; }
+    .ledger-line { stroke: #000; stroke-width: 2; pointer-events: none; }
+    .bar-line { stroke: #111; stroke-width: 2.5; }
+
+    .note-head { fill: #000; cursor: grab; transition: fill 0.15s; }
+    .note-head.hollow { fill: #FFF8EE; stroke: #000; stroke-width: 2.5; }
+    .note-head:active { cursor: grabbing; fill: #FF0055 !important; }
+    .note-head.selected { fill: #00E5FF !important; filter: drop-shadow(0 0 4px #00E5FF); }
+    .note-head.active { fill: #FF0055 !important; filter: drop-shadow(0 0 5px #FF0055); }
+
+    .note-stem { stroke: #000; stroke-width: 2.5; pointer-events: none; }
+    .rest-symbol { fill: #000; font-family: serif; font-weight: bold; cursor: grab; }
+    .rest-symbol.selected { fill: #00E5FF !important; }
+    
+    .guide-line { stroke: rgba(0, 229, 255, 0.4); stroke-width: 1.5; stroke-dasharray: 2,2; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🎼 Editor de Partitura para Violoncelo</h1>
+  </header>
+
+  <div class="main-container">
+
+    <!-- COLUNA DA ESQUERDA -->
+    <div class="card left-panel">
+      
+      <div class="fingerboard-container">
+        <svg id="bracoCelloVertical" viewBox="0 0 180 520">
+          <defs>
+            <linearGradient id="ebonyGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#22140C"/>
+              <stop offset="30%" stop-color="#120A05"/>
+              <stop offset="50%" stop-color="#050302"/>
+              <stop offset="70%" stop-color="#120A05"/>
+              <stop offset="100%" stop-color="#22140C"/>
+            </linearGradient>
+
+            <linearGradient id="nutGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#D7C4A5"/>
+              <stop offset="100%" stop-color="#9E886A"/>
+            </linearGradient>
+
+            <linearGradient id="woodHead" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#4A2508"/>
+              <stop offset="100%" stop-color="#241002"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Cabeça -->
+          <path d="M 30,10 L 150,10 L 144,60 L 36,60 Z" fill="url(#woodHead)" />
+          
+          <circle cx="18" cy="24" r="5" fill="#111" stroke="#444" stroke-width="1" />
+          <circle cx="162" cy="24" r="5" fill="#111" stroke="#444" stroke-width="1" />
+          <circle cx="18" cy="46" r="5" fill="#111" stroke="#444" stroke-width="1" />
+          <circle cx="162" cy="46" r="5" fill="#111" stroke="#444" stroke-width="1" />
+
+          <!-- Pestana -->
+          <rect x="30" y="60" width="120" height="14" rx="3" fill="url(#nutGrad)" stroke="#332211" />
+
+          <!-- Espelho -->
+          <path d="M 33,74 L 147,74 L 165,510 L 15,510 Z" fill="url(#ebonyGrad)" />
+
+          <!-- Marcadores de Posição -->
+          <circle cx="156" cy="200" r="3.5" fill="#D7C4A5" opacity="0.8" />
+          <circle cx="158" cy="300" r="3.5" fill="#D7C4A5" opacity="0.8" />
+          <circle cx="160" cy="420" r="4.5" fill="#FFD700" opacity="0.9" />
+
+          <!-- Linhas de Posições -->
+          <line x1="30" y1="200" x2="150" y2="200" stroke="#FFF" stroke-opacity="0.1" stroke-dasharray="3,3" />
+          <line x1="25" y1="300" x2="155" y2="300" stroke="#FFF" stroke-opacity="0.1" stroke-dasharray="3,3" />
+          <line x1="20" y1="420" x2="160" y2="420" stroke="#FFF" stroke-opacity="0.15" stroke-dasharray="3,3" />
+
+          <!-- Rotulagem C, G, D, A -->
+          <text x="45" y="50" fill="#DDD" font-size="12" font-weight="bold" text-anchor="middle">C</text>
+          <text x="75" y="50" fill="#DDD" font-size="12" font-weight="bold" text-anchor="middle">G</text>
+          <text x="105" y="50" fill="#DDD" font-size="12" font-weight="bold" text-anchor="middle">D</text>
+          <text x="135" y="50" fill="#DDD" font-size="12" font-weight="bold" text-anchor="middle">A</text>
+
+          <!-- CORDAS -->
+          <line id="corda-C" class="corda-cello" x1="45" y1="20" x2="45" y2="510" stroke="#E6E6E6" stroke-width="5" />
+          <line id="corda-G" class="corda-cello" x1="75" y1="20" x2="75" y2="510" stroke="#DDDDDD" stroke-width="3.8" />
+          <line id="corda-D" class="corda-cello" x1="105" y1="20" x2="105" y2="510" stroke="#CCCCCC" stroke-width="2.8" />
+          <line id="corda-A" class="corda-cello" x1="135" y1="20" x2="135" y2="510" stroke="#BBBBBB" stroke-width="2.0" />
+
+          <!-- Dedo Indicador Dinâmico -->
+          <g id="grupoDedo" transform="translate(-100, -100)">
+            <circle class="finger-indicator" cx="0" cy="0" r="14" />
+            <text id="textoDedo" x="0" y="0" fill="#000" font-weight="900" font-size="14" text-anchor="middle" dominant-baseline="central"></text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Display da Nota Selecionada -->
+      <div class="display-nota">
+        <span style="font-size: 0.65rem; color: #888; text-transform: uppercase;">Nota Selecionada</span>
+        <h2 id="nomeNota">Ré2</h2>
+        <p id="infoCorda">Corda: C | Dedo: 1</p>
+      </div>
+
+      <!-- PAINEL DE CONTROLE DE REPRODUÇÃO -->
+      <div class="playback-controls">
+        <button id="btnPlay" class="btn" style="background:#00E676; padding: 8px; justify-content: center;" onclick="iniciarOuAlternarPlay()">▶ Tocar Partitura</button>
+        <div class="playback-controls-row">
+          <button id="btnPause" class="btn btn-warning" style="flex: 1; padding: 6px; justify-content: center;" onclick="pausarReproducao()" disabled>⏸️ Pausar</button>
+          <button id="btnReset" class="btn btn-secondary" style="flex: 1; padding: 6px; justify-content: center;" onclick="voltarAoInicio()">⏮️ Início</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- COLUNA DA DIREITA -->
+    <div class="card right-panel">
+      
+      <!-- ESCALA COMPACTA DE NOTAS NA CLAVE DE FÁ -->
+      <div class="scale-bar-container">
+        <div class="scale-title">
+          <span>🎼 Guia de Notas da Clave de Fá (Clique para Testar)</span>
+          <span style="opacity: 0.6; font-size: 0.65rem;">Grave → Agudo</span>
+        </div>
+        <div class="scale-notes-grid" id="scaleGrid"></div>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="block-group">
+          <label style="font-size: 0.62rem;">Comp.:</label>
+          <select id="selectCompasso" onchange="alterarCompasso()" style="font-size: 0.65rem; padding: 1px 3px;">
+            <option value="4/4" selected>4/4</option>
+            <option value="3/4">3/4</option>
+            <option value="2/4">2/4</option>
+          </select>
+        </div>
+
+        <div class="block-group">
+          <label>🎵 Notas:</label>
+          <select id="selectNota">
+            <option value="semibreve">𝄽 Semibreve (4t)</option>
+            <option value="minima">𝄲 Mínima (2t)</option>
+            <option value="seminima" selected>♩ Semínima (1t)</option>
+            <option value="colcheia">♪ Colcheia (0.5t)</option>
+          </select>
+          <label class="checkbox-container">
+            <input type="checkbox" id="checkPontoNota"> Ponto (.)
+          </label>
+          <button class="btn" onclick="adicionarItem('nota')">+ Nota</button>
+        </div>
+
+        <div class="block-group">
+          <label>⏸️ Pausas:</label>
+          <select id="selectPausa">
+            <option value="pausa_semibreve">𝄻 Pausa Semibreve</option>
+            <option value="pausa_minima">𝄼 Pausa Mínima</option>
+            <option value="pausa_seminima" selected>𝄽 Pausa Semínima</option>
+          </select>
+          <label class="checkbox-container">
+            <input type="checkbox" id="checkPontoPausa"> Ponto (.)
+          </label>
+          <button class="btn" onclick="adicionarItem('pausa')">+ Pausa</button>
+        </div>
+
+        <button class="btn btn-danger" onclick="removerUltimo()" style="margin-left: auto;">✕ Remover</button>
+      </div>
+
+      <!-- PAUTA COMPACTA DA PARTITURA -->
+      <div class="staff-container" id="staffContainer">
+        <svg id="staffSVG" width="1000">
+          <text x="15" y="117" font-family="serif" font-size="52" fill="#000">𝄢</text>
+          
+          <g id="compassoSVG">
+            <text id="numUpper" x="62" y="99" font-family="serif" font-weight="bold" font-size="20" fill="#000">4</text>
+            <text id="numLower" x="62" y="125" font-family="serif" font-weight="bold" font-size="20" fill="#000">4</text>
+          </g>
+
+          <g id="gridLines"></g>
+          <g id="barLinesGroup"></g>
+          <g id="notesGroup"></g>
+          <line id="dragGuide" class="guide-line" x1="0" y1="0" x2="0" y2="0" opacity="0"/>
+        </svg>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // Tabela completa e precisa de notas na Clave de Fá para Cello
+    // yStep 0 = Sol3 (4ª linha da pauta)
+    const NOTAS_CLAVE_FA = [
+      { yStep: -7, nota: "G4", nome: "Sol4", freq: 392.00, corda: "A", dedo: 4, pos_y: 420 },
+      { yStep: -6, nota: "F4", nome: "Fá4",  freq: 349.23, corda: "A", dedo: 4, pos_y: 420 },
+      { yStep: -5, nota: "E4", nome: "Mi4",  freq: 329.63, corda: "A", dedo: 4, pos_y: 420 },
+      { yStep: -4, nota: "D4", nome: "Ré4",  freq: 293.66, corda: "A", dedo: 4, pos_y: 420 },
+      { yStep: -3, nota: "C4", nome: "Dó4",  freq: 261.63, corda: "A", dedo: 2, pos_y: 300 },
+      { yStep: -2, nota: "B3", nome: "Si3",  freq: 246.94, corda: "A", dedo: 1, pos_y: 200 },
+      { yStep: -1, nota: "A3", nome: "Lá3",  freq: 220.00, corda: "A", dedo: 0, pos_y: 70 },
+      { yStep:  0, nota: "G3", nome: "Sol3", freq: 196.00, corda: "D", dedo: 4, pos_y: 420 },
+      { yStep:  1, nota: "F3", nome: "Fá3",  freq: 174.61, corda: "D", dedo: 4, pos_y: 420 },
+      { yStep:  2, nota: "E3", nome: "Mi3",  freq: 164.81, corda: "D", dedo: 1, pos_y: 200 },
+      { yStep:  3, nota: "D3", nome: "Ré3",  freq: 146.83, corda: "D", dedo: 0, pos_y: 70 },
+      { yStep:  4, nota: "C3", nome: "Dó3",  freq: 130.81, corda: "G", dedo: 4, pos_y: 420 },
+      { yStep:  5, nota: "B2", nome: "Si2",  freq: 123.47, corda: "G", dedo: 2, pos_y: 300 },
+      { yStep:  6, nota: "A2", nome: "Lá2",  freq: 110.00, corda: "G", dedo: 1, pos_y: 200 },
+      { yStep:  7, nota: "G2", nome: "Sol2", freq: 98.00,  corda: "G", dedo: 0, pos_y: 70 },
+      { yStep:  8, nota: "F2", nome: "Fá2",  freq: 87.31,  corda: "C", dedo: 4, pos_y: 420 },
+      { yStep:  9, nota: "E2", nome: "Mi2",  freq: 82.41,  corda: "C", dedo: 3, pos_y: 300 },
+      { yStep: 10, nota: "D2", nome: "Ré2",  freq: 73.42,  corda: "C", dedo: 1, pos_y: 200 },
+      { yStep: 11, nota: "C2", nome: "Dó2",  freq: 65.41,  corda: "C", dedo: 0, pos_y: 70 }
+    ];
+
+    const FIGURAS = {
+      'semibreve':       { duracaoTempos: 4,   temHaste: false, vazada: true,  isPausa: false },
+      'minima':          { duracaoTempos: 2,   temHaste: true,  vazada: true,  isPausa: false },
+      'seminima':        { duracaoTempos: 1,   temHaste: true,  vazada: false, isPausa: false },
+      'colcheia':         { duracaoTempos: 0.5, temHaste: true,  vazada: false, isPausa: false },
+      'pausa_semibreve': { duracaoTempos: 4,   isPausa: true, simbolo: '𝄻' },
+      'pausa_minima':    { duracaoTempos: 2,   isPausa: true, simbolo: '𝄼' },
+      'pausa_seminima':  { duracaoTempos: 1,   isPausa: true, simbolo: '𝄽' }
+    };
+
+    const Y_TOP_LINE = 75; // Pauta começa na Y=75
+    const LINE_SPACING = 14;
+    const STEP_PIXELS = 7; // Distância vertical entre notas consecutivas
+    const cordaX = { 'C': 45, 'G': 75, 'D': 105, 'A': 135 };
+
+    let temposPorCompasso = 4;
+    let listaNotas = [];
+    let selectedIndex = 0;
+    let dragIndex = -1;
+    let isDragging = false;
+
+    // ESTADOS DE REPRODUÇÃO
+    let emReproducao = false;
+    let estaPausado = false;
+    let indiceAtual = 0;
+    let playTimeoutId = null;
+
+    const staffContainer = document.getElementById('staffContainer');
+    const staffSVG = document.getElementById('staffSVG');
+    const gridLines = document.getElementById('gridLines');
+    const barLinesGroup = document.getElementById('barLinesGroup');
+    const notesGroup = document.getElementById('notesGroup');
+    const dragGuide = document.getElementById('dragGuide');
+    const scaleGrid = document.getElementById('scaleGrid');
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function renderizarGuiaEscala() {
+      scaleGrid.innerHTML = '';
+      const notasOrdenadas = [...NOTAS_CLAVE_FA].reverse();
+
+      notasOrdenadas.forEach(n => {
+        const chip = document.createElement('div');
+        chip.className = 'scale-chip';
+        chip.id = `chip-${n.nota}`;
+        chip.innerHTML = `
+          <span class="chip-name">${n.nome}</span>
+          <span class="chip-sub">${n.corda}:${n.dedo}</span>
+        `;
+        chip.onclick = (e) => {
+          e.stopPropagation();
+          tocarCelloRealistico(n.freq, 1.2);
+          
+          if (selectedIndex >= 0 && selectedIndex < listaNotas.length) {
+            const itemOriginal = listaNotas[selectedIndex];
+            if (!FIGURAS[itemOriginal.tipo].isPausa) {
+              const yCalc = Y_TOP_LINE + (n.yStep * STEP_PIXELS);
+              listaNotas[selectedIndex] = { ...itemOriginal, ...n, calculatedY: yCalc };
+              renderizarNotas();
+            }
+          }
+          atualizarDisplay({ ...n, tipo: 'seminima', pontuada: false });
+        };
+        scaleGrid.appendChild(chip);
+      });
+    }
+
+    function desenharPentagrama(totalWidth) {
+      gridLines.innerHTML = '';
+      staffSVG.setAttribute('width', totalWidth);
+
+      // Linhas principais da pauta (Clave de Fá: Sol3, Mi3, Dó3, Lá2, Fá2)
+      for (let i = 0; i < 5; i++) {
+        const y = Y_TOP_LINE + (i * LINE_SPACING);
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", "10");
+        line.setAttribute("y1", y);
+        line.setAttribute("x2", totalWidth - 10);
+        line.setAttribute("y2", y);
+        line.setAttribute("class", "staff-line");
+        gridLines.appendChild(line);
+      }
+    }
+
+    function obterNotaPorY(y) {
+      // Arredonda para o degrau mais próximo
+      let step = Math.round((y - Y_TOP_LINE) / STEP_PIXELS);
+      
+      // Limita ao alcance do cello (-7 a 11)
+      step = Math.max(-7, Math.min(11, step));
+      
+      const enc = NOTAS_CLAVE_FA.find(n => n.yStep === step);
+      if (enc) {
+        return { ...enc, calculatedY: Y_TOP_LINE + (step * STEP_PIXELS), yStep: step };
+      }
+      return { ...NOTAS_CLAVE_FA[10], calculatedY: Y_TOP_LINE + (10 * STEP_PIXELS), yStep: 10 }; // Default Ré2
+    }
+
+    function alterarCompasso() {
+      const val = document.getElementById('selectCompasso').value;
+      temposPorCompasso = parseInt(val.split('/')[0]);
+      document.getElementById('numUpper').textContent = temposPorCompasso;
+      document.getElementById('numLower').textContent = val.split('/')[1];
+      renderizarNotas();
+    }
+
+    function renderizarNotas() {
+      notesGroup.innerHTML = '';
+      barLinesGroup.innerHTML = '';
+
+      let acumuladorTempos = 0;
+      let currentX = 110;
+
+      listaNotas.forEach((item, index) => {
+        const fig = FIGURAS[item.tipo];
+        const duracaoEfetiva = item.pontuada ? fig.duracaoTempos * 1.5 : fig.duracaoTempos;
+        acumuladorTempos += duracaoEfetiva;
+
+        const x = currentX;
+        item.currentPosX = x;
+        const y = item.calculatedY;
+        const step = item.yStep;
+
+        const isSelected = (index === selectedIndex);
+
+        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        g.setAttribute("data-index", index);
+
+        if (fig.isPausa) {
+          const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          text.setAttribute("x", x);
+          text.setAttribute("y", Y_TOP_LINE + 30);
+          text.setAttribute("font-size", "28");
+          text.setAttribute("text-anchor", "middle");
+          text.setAttribute("class", "rest-symbol" + (isSelected ? " selected" : "") + (item.active ? " active" : ""));
+          text.textContent = fig.simbolo;
+          text.addEventListener('mousedown', (e) => selecionarNota(e, index));
+          g.appendChild(text);
+
+          if (item.pontuada) {
+            const ponto = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            ponto.setAttribute("cx", x + 12);
+            ponto.setAttribute("cy", Y_TOP_LINE + 24);
+            ponto.setAttribute("r", "2.5");
+            ponto.setAttribute("fill", isSelected ? "#00E5FF" : "#000");
+            g.appendChild(ponto);
+          }
+        } else {
+          // Linhas Suplementares Inferiores (Fá2 = 8, Mi2 = 9, Ré2 = 10, Dó2 = 11)
+          if (step >= 6) {
+            for (let s = 6; s <= step; s += 2) {
+              const lineY = Y_TOP_LINE + (s * STEP_PIXELS);
+              const ledger = document.createElementNS("http://www.w3.org/2000/svg", "line");
+              ledger.setAttribute("x1", x - 11); ledger.setAttribute("y1", lineY);
+              ledger.setAttribute("x2", x + 11); ledger.setAttribute("y2", lineY);
+              ledger.setAttribute("class", "ledger-line");
+              g.appendChild(ledger);
+            }
+          }
+          // Linhas Suplementares Superiores
+          if (step <= -4) {
+            for (let s = -4; s >= step; s -= 2) {
+              const lineY = Y_TOP_LINE + (s * STEP_PIXELS);
+              const ledger = document.createElementNS("http://www.w3.org/2000/svg", "line");
+              ledger.setAttribute("x1", x - 11); ledger.setAttribute("y1", lineY);
+              ledger.setAttribute("x2", x + 11); ledger.setAttribute("y2", lineY);
+              ledger.setAttribute("class", "ledger-line");
+              g.appendChild(ledger);
+            }
+          }
+
+          const hasteParaBaixo = step < 2;
+
+          if (fig.temHaste) {
+            const stem = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            const stemX = hasteParaBaixo ? x - 7 : x + 7;
+            const stemY2 = hasteParaBaixo ? y + 26 : y - 26;
+            
+            stem.setAttribute("x1", stemX); stem.setAttribute("y1", y);
+            stem.setAttribute("x2", stemX); stem.setAttribute("y2", stemY2);
+            stem.setAttribute("class", "note-stem");
+            g.appendChild(stem);
+          }
+
+          const ellipse = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+          ellipse.setAttribute("cx", x); ellipse.setAttribute("cy", y);
+          ellipse.setAttribute("rx", "7.5"); ellipse.setAttribute("ry", "5.5");
+          ellipse.setAttribute("class", "note-head" + (fig.vazada ? " hollow" : "") + (isSelected ? " selected" : "") + (item.active ? " active" : ""));
+          
+          ellipse.addEventListener('mousedown', (e) => iniciarArraste(e, index));
+          g.appendChild(ellipse);
+
+          if (item.pontuada) {
+            const ponto = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            ponto.setAttribute("cx", x + 13);
+            ponto.setAttribute("cy", y);
+            ponto.setAttribute("r", "2.5");
+            ponto.setAttribute("fill", item.active ? "#FF0055" : (isSelected ? "#00E5FF" : "#000"));
+            g.appendChild(ponto);
+          }
+
+          // Indicação visual de Dedo acima/abaixo da nota
+          const textDedo = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          const dedoY = hasteParaBaixo ? y - 12 : y - 30;
+          textDedo.setAttribute("x", x);
+          textDedo.setAttribute("y", dedoY);
+          textDedo.setAttribute("font-weight", "bold");
+          textDedo.setAttribute("font-size", "11");
+          textDedo.setAttribute("text-anchor", "middle");
+          textDedo.setAttribute("fill", isSelected ? "#00E5FF" : "#111");
+          textDedo.textContent = item.dedo;
+          g.appendChild(textDedo);
+        }
+
+        notesGroup.appendChild(g);
+
+        if (acumuladorTempos >= temposPorCompasso) {
+          const barX = x + (item.pontuada ? 26 : 22);
+          const barLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          barLine.setAttribute("x1", barX);
+          barLine.setAttribute("y1", Y_TOP_LINE);
+          barLine.setAttribute("x2", barX);
+          barLine.setAttribute("y2", Y_TOP_LINE + (4 * LINE_SPACING));
+          barLine.setAttribute("class", "bar-line");
+          barLinesGroup.appendChild(barLine);
+
+          acumuladorTempos = 0;
+          currentX += 48;
+        } else {
+          currentX += item.pontuada ? 42 : 36;
+        }
+      });
+
+      const minWidth = staffContainer.clientWidth || 700;
+      const totalWidth = Math.max(minWidth, currentX + 60);
+      desenharPentagrama(totalWidth);
+    }
+
+    function focarNota(x) {
+      if (!x) return;
+      const containerWidth = staffContainer.clientWidth;
+      staffContainer.scrollTo({
+        left: x - containerWidth / 2,
+        behavior: 'smooth'
+      });
+    }
+
+    function selecionarNota(e, index) {
+      e.stopPropagation();
+      selectedIndex = index;
+      atualizarDisplay(listaNotas[index]);
+      renderizarNotas();
+    }
+
+    function iniciarArraste(e, index) {
+      e.stopPropagation();
+      if (FIGURAS[listaNotas[index].tipo].isPausa) return;
+      
+      dragIndex = index;
+      selectedIndex = index;
+      isDragging = true;
+
+      dragGuide.setAttribute("opacity", "1");
+
+      document.addEventListener('mousemove', moverArraste);
+      document.addEventListener('mouseup', finalizarArraste);
+    }
+
+    function moverArraste(e) {
+      if (dragIndex === -1 || !isDragging) return;
+
+      const rect = staffSVG.getBoundingClientRect();
+      const mouseY = e.clientY - rect.top;
+
+      const novaInfo = obterNotaPorY(mouseY);
+      
+      // Atualiza apenas se mudou de degrau
+      if (listaNotas[dragIndex].yStep !== novaInfo.yStep) {
+        listaNotas[dragIndex] = { ...listaNotas[dragIndex], ...novaInfo };
+        atualizarDisplay(listaNotas[dragIndex]);
+        renderizarNotas();
+        tocarCelloRealistico(novaInfo.freq, 0.2);
+      }
+
+      dragGuide.setAttribute("x1", "0");
+      dragGuide.setAttribute("y1", novaInfo.calculatedY);
+      dragGuide.setAttribute("x2", staffSVG.getAttribute("width"));
+      dragGuide.setAttribute("y2", novaInfo.calculatedY);
+    }
+
+    function finalizarArraste() {
+      if (dragIndex !== -1) {
+        tocarCelloRealistico(listaNotas[dragIndex].freq, 0.6);
+      }
+      dragIndex = -1;
+      isDragging = false;
+      dragGuide.setAttribute("opacity", "0");
+      document.removeEventListener('mousemove', moverArraste);
+      document.removeEventListener('mouseup', finalizarArraste);
+    }
+
+    // Clique direto na pauta para alterar a posição da nota selecionada
+    staffContainer.addEventListener('click', (e) => {
+      if (isDragging) return;
+      const rect = staffSVG.getBoundingClientRect();
+      const mouseY = e.clientY - rect.top;
+      
+      if (mouseY < 20 || mouseY > 210) return; // Fora da área útil da pauta
+
+      const novaInfo = obterNotaPorY(mouseY);
+
+      if (selectedIndex >= 0 && selectedIndex < listaNotas.length) {
+        if (!FIGURAS[listaNotas[selectedIndex].tipo].isPausa) {
+          listaNotas[selectedIndex] = { ...listaNotas[selectedIndex], ...novaInfo };
+          atualizarDisplay(listaNotas[selectedIndex]);
+          renderizarNotas();
+          tocarCelloRealistico(novaInfo.freq, 0.7);
+        }
+      }
+    });
+
+    function atualizarDisplay(item) {
+      const fig = FIGURAS[item.tipo];
+      const duracaoEfetiva = item.pontuada ? fig.duracaoTempos * 1.5 : fig.duracaoTempos;
+
+      if (fig.isPausa) {
+        document.getElementById('nomeNota').textContent = "Pausa " + (item.pontuada ? "(.)" : "");
+        document.getElementById('infoCorda').textContent = "Silêncio (" + duracaoEfetiva + "t)";
+        return;
+      }
+
+      document.getElementById('nomeNota').textContent = item.nome + (item.pontuada ? " (.)" : "");
+      document.getElementById('infoCorda').textContent = `Corda: ${item.corda} | Dedo: ${item.dedo} (${duracaoEfetiva}t)`;
+
+      ['C', 'G', 'D', 'A'].forEach(c => {
+        const el = document.getElementById(`corda-${c}`);
+        if (el) el.classList.remove('solta-ativa');
+      });
+
+      document.querySelectorAll('.scale-chip').forEach(c => c.classList.remove('active'));
+      const activeChip = document.getElementById(`chip-${item.nota}`);
+      if (activeChip) activeChip.classList.add('active');
+
+      const grupoDedo = document.getElementById('grupoDedo');
+      const textoDedo = document.getElementById('textoDedo');
+
+      if (item.dedo === 0) {
+        const cordaAtiva = document.getElementById(`corda-${item.corda}`);
+        if (cordaAtiva) cordaAtiva.classList.add('solta-ativa');
+        grupoDedo.setAttribute('transform', 'translate(-100, -100)');
+      } else {
+        const posX = cordaX[item.corda];
+        grupoDedo.setAttribute('transform', `translate(${posX}, ${item.pos_y})`);
+        textoDedo.textContent = item.dedo;
+      }
+    }
+
+    function adicionarItem(origem) {
+      let tipo, pontuada;
+      if (origem === 'nota') {
+        tipo = document.getElementById('selectNota').value;
+        pontuada = document.getElementById('checkPontoNota').checked;
+      } else {
+        tipo = document.getElementById('selectPausa').value;
+        pontuada = document.getElementById('checkPontoPausa').checked;
+      }
+
+      // Adiciona o Ré2 por padrão ao clicar em adicionar
+      const notaPadrao = obterNotaPorY(Y_TOP_LINE + (10 * STEP_PIXELS)); // Ré2
+      const novoItem = { ...notaPadrao, tipo: tipo, pontuada: pontuada };
+      listaNotas.push(novoItem);
+      selectedIndex = listaNotas.length - 1;
+      
+      renderizarNotas();
+      atualizarDisplay(novoItem);
+
+      if (origem === 'nota') {
+        tocarCelloRealistico(novoItem.freq, 0.8);
+      }
+
+      setTimeout(() => focarNota(novoItem.currentPosX), 50);
+    }
+
+    function removerUltimo() {
+      listaNotas.pop();
+      selectedIndex = Math.max(0, listaNotas.length - 1);
+      renderizarNotas();
+      if (listaNotas.length > 0) {
+        atualizarDisplay(listaNotas[selectedIndex]);
+      }
+    }
+
+    function carregarExemploLongo() {
+      // Começa com a sequência com o Ré2 (degrau 10) e Dó2 (degrau 11)
+      const Ys = [145, 145, 138, 131, 145, 117, 103, 96, 82, 89, 75, 68, 75, 82, 89, 96, 103, 110, 117, 124, 131, 138, 145, 152];
+      listaNotas = Ys.map((y, idx) => {
+        const item = obterNotaPorY(y);
+        if (idx === 0) return { ...item, tipo: 'seminima', pontuada: false };
+        if (idx === 1) return { ...item, tipo: 'seminima', pontuada: false };
+        if (idx === 3) return { ...item, tipo: 'pausa_seminima', pontuada: false };
+        if (idx === 7) return { ...item, tipo: 'minima', pontuada: false };
+        return { ...item, tipo: 'seminima', pontuada: false };
+      });
+      selectedIndex = 0;
+      atualizarDisplay(listaNotas[0]);
+      renderizarNotas();
+      staffContainer.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+
+    // SÍNTESE ACÚSTICA RICA DE VIOLONCELO
+    function tocarCelloRealistico(frequencia, duracaoSegundos) {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+      const masterGain = audioCtx.createGain();
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(Math.min(frequencia * 3.5, 2200), now);
+      filter.Q.setValueAtTime(2.5, now);
+
+      const vibratoLFO = audioCtx.createOscillator();
+      const vibratoGain = audioCtx.createGain();
+      vibratoLFO.frequency.setValueAtTime(5.5, now);
+      vibratoGain.gain.setValueAtTime(0, now);
+      vibratoGain.gain.linearRampToValueAtTime(frequencia * 0.015, now + 0.2);
+      vibratoLFO.connect(vibratoGain);
+      vibratoLFO.start(now);
+
+      const harmonicos = [
+        { mult: 1,   ganho: 0.8 },
+        { mult: 2,   ganho: 0.5 },
+        { mult: 3,   ganho: 0.3 },
+        { mult: 4,   ganho: 0.2 },
+        { mult: 5,   ganho: 0.1 },
+        { mult: 6,   ganho: 0.05 }
+      ];
+
+      harmonicos.forEach(h => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(frequencia * h.mult, now);
+        vibratoGain.connect(osc.frequency);
+
+        g.gain.setValueAtTime(h.ganho, now);
+        osc.connect(g);
+        g.connect(filter);
+        osc.start(now);
+        osc.stop(now + duracaoSegundos + 0.3);
+      });
+
+      masterGain.gain.setValueAtTime(0, now);
+      masterGain.gain.linearRampToValueAtTime(0.35, now + 0.08);
+      masterGain.gain.exponentialRampToValueAtTime(0.25, now + 0.2);
+      masterGain.gain.exponentialRampToValueAtTime(0.0001, now + duracaoSegundos + 0.25);
+
+      filter.connect(masterGain);
+      masterGain.connect(audioCtx.destination);
+    }
+
+    /* CONTROLE DE REPRODUÇÃO */
+    function iniciarOuAlternarPlay() {
+      if (listaNotas.length === 0) return;
+
+      if (!emReproducao) {
+        emReproducao = true;
+        estaPausado = false;
+        if (indiceAtual >= listaNotas.length) indiceAtual = 0;
+        
+        document.getElementById('btnPlay').textContent = "▶ Executando...";
+        document.getElementById('btnPlay').disabled = true;
+        document.getElementById('btnPause').disabled = false;
+        
+        executarPasso();
+      }
+    }
+
+    function executarPasso() {
+      if (!emReproducao || estaPausado) return;
+
+      if (indiceAtual >= listaNotas.length) {
+        finalizarReproducao();
+        return;
+      }
+
+      listaNotas.forEach((n, idx) => n.active = (idx === indiceAtual));
+      renderizarNotas();
+
+      const item = listaNotas[indiceAtual];
+      focarNota(item.currentPosX);
+
+      const fig = FIGURAS[item.tipo];
+      const duracaoTempos = item.pontuada ? fig.duracaoTempos * 1.5 : fig.duracaoTempos;
+      const duracaoSegundos = duracaoTempos * 0.55;
+
+      atualizarDisplay(item);
+
+      if (!fig.isPausa) {
+        tocarCelloRealistico(item.freq, duracaoSegundos);
+      }
+
+      playTimeoutId = setTimeout(() => {
+        if (emReproducao && !estaPausado) {
+          indiceAtual++;
+          executarPasso();
+        }
+      }, duracaoSegundos * 1000);
+    }
+
+    function pausarReproducao() {
+      if (!emReproducao) return;
+
+      if (!estaPausado) {
+        estaPausado = true;
+        if (playTimeoutId) clearTimeout(playTimeoutId);
+        document.getElementById('btnPause').textContent = "▶️ Retomar";
+        document.getElementById('btnPlay').textContent = "⏸️ Pausado";
+      } else {
+        estaPausado = false;
+        document.getElementById('btnPause').textContent = "⏸️ Pausar";
+        document.getElementById('btnPlay').textContent = "▶ Executando...";
+        executarPasso();
+      }
+    }
+
+    function voltarAoInicio() {
+      if (playTimeoutId) clearTimeout(playTimeoutId);
+      emReproducao = false;
+      estaPausado = false;
+      indiceAtual = 0;
+
+      listaNotas.forEach(n => n.active = false);
+      renderizarNotas();
+
+      document.getElementById('btnPlay').textContent = "▶ Tocar Partitura";
+      document.getElementById('btnPlay').disabled = false;
+      document.getElementById('btnPause').textContent = "⏸️ Pausar";
+      document.getElementById('btnPause').disabled = true;
+
+      if (listaNotas.length > 0) {
+        atualizarDisplay(listaNotas[0]);
+        focarNota(listaNotas[0].currentPosX);
+      } else {
+        staffContainer.scrollTo({ left: 0, behavior: 'smooth' });
+      }
+    }
+
+    function finalizarReproducao() {
+      if (playTimeoutId) clearTimeout(playTimeoutId);
+      emReproducao = false;
+      estaPausado = false;
+      indiceAtual = 0;
+
+      listaNotas.forEach(n => n.active = false);
+      renderizarNotas();
+
+      document.getElementById('btnPlay').textContent = "▶ Tocar Partitura";
+      document.getElementById('btnPlay').disabled = false;
+      document.getElementById('btnPause').textContent = "⏸️ Pausar";
+      document.getElementById('btnPause').disabled = true;
+    }
+
+    renderizarGuiaEscala();
+    carregarExemploLongo();
+  </script>
+</body>
+</html>
